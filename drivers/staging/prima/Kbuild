@@ -638,8 +638,7 @@ CDEFINES +=	-DWLAN_DEBUG \
 		-DSME_TRACE_RECORD \
 		-DPE_DEBUG_LOGW \
 		-DPE_DEBUG_LOGE \
-                -DDXE_TRACE \
-		-DDEBUG
+                -DDXE_TRACE
 endif
 
 ifeq ($(CONFIG_SLUB_DEBUG_ON),y)
@@ -698,11 +697,6 @@ endif
 # enable the MAC Address auto-generation feature
 CDEFINES += -DWLAN_AUTOGEN_MACADDR_FEATURE
 
-# Read MACs from boot params instead of NV file
-ifeq ($(CONFIG_MACH_LENOVO),y)
-CDEFINES += -DMOTO_UTAGS_MAC
-endif
-
 ifeq ($(CONFIG_WLAN_FEATURE_11W),y)
 CDEFINES += -DWLAN_FEATURE_11W
 endif
@@ -751,7 +745,7 @@ CDEFINES += -DEXISTS_MSM_SMSM
 endif
 
 # Fix build for GCC 4.7
-EXTRA_CFLAGS += -Wno-maybe-uninitialized -Wno-unused-function -Wno-unused-variable
+EXTRA_CFLAGS += -DNDEBUG -Wno-maybe-uninitialized -Wno-unused-function -Wno-unused-variable
 
 ifeq ($(CONFIG_WLAN_OFFLOAD_PACKETS),y)
 CDEFINES += -DWLAN_FEATURE_OFFLOAD_PACKETS
