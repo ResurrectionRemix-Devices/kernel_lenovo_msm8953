@@ -205,6 +205,7 @@ struct kgsl_pwrctrl {
 	unsigned int pm_qos_cpu_mask_latency;
 	unsigned int pm_qos_wakeup_latency;
 	bool bus_control;
+	bool input_disable;
 	int bus_mod;
 	unsigned int bus_percent_ab;
 	unsigned int bus_width;
