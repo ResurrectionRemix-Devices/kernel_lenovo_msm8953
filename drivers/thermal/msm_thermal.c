@@ -202,6 +202,8 @@ static LIST_HEAD(devices_list);
 static LIST_HEAD(thresholds_list);
 static int mitigation = 1;
 
+static void freq_mitigation_reinit(void);
+
 enum thermal_threshold {
 	HOTPLUG_THRESHOLD_HIGH,
 	HOTPLUG_THRESHOLD_LOW,
@@ -645,8 +647,10 @@ static void msm_thermal_update_freq(bool is_shutdown, bool mitigate)
 
 	if (freq_mitigation_task)
 		complete(&freq_mitigation_complete);
-	else
+	else {
 		pr_err("Freq mitigation task is not initialized\n");
+		freq_mitigation_reinit();
+	}
 notify_exit:
 	return;
 }
@@ -778,6 +782,7 @@ static int devmgr_client_cpufreq_update(struct device_manager_data *dev_mgr)
 		complete(&freq_mitigation_complete);
 	} else {
 		pr_err("Frequency mitigation task is not initialized\n");
+		freq_mitigation_reinit();
 		ret = -ESRCH;
 	}
 
@@ -1012,8 +1017,10 @@ static void update_cpu_freq(int cpu)
 			&& (cpus[cpu].limited_max_freq
 				>= get_core_max_freq(cpu))) {
 			cpumask_xor(&throttling_mask, &mask, &throttling_mask);
+			set_cpu_throttled(&mask, false);
 		} else if (!cpumask_intersects(&mask, &throttling_mask)) {
 			cpumask_or(&throttling_mask, &mask, &throttling_mask);
+			set_cpu_throttled(&mask, true);
 		}
 		trace_thermal_pre_frequency_mit(cpu,
 			cpus[cpu].limited_max_freq,
@@ -2475,11 +2482,6 @@ static int therm_get_temp(uint32_t id, enum sensor_id_type type, long *temp)
 		goto get_temp_exit;
 	}
 
-	if (id == -19) {
-		ret = -EINVAL;
-		goto get_temp_exit;
-	}
-
 	switch (type) {
 	case THERM_ZONE_ID:
 		ret = sensor_get_temp(id, temp);
@@ -2539,11 +2541,6 @@ int sensor_mgr_set_threshold(uint32_t zone_id,
 
 	if (!threshold) {
 		pr_err("Invalid input\n");
-		ret = -EINVAL;
-		goto set_threshold_exit;
-	}
-
-	if (zone_id == -19) {
 		ret = -EINVAL;
 		goto set_threshold_exit;
 	}
@@ -3498,6 +3495,9 @@ static void check_temp(struct work_struct *work)
 	long temp = 0;
 	int ret = 0;
 
+	if (!msm_thermal_probed)
+		return;
+
 	do_therm_reset();
 
 	ret = therm_get_temp(msm_thermal_info.sensor_id, THERM_TSENS_ID, &temp);
@@ -3623,8 +3623,6 @@ static int hotplug_init_cpu_offlined(void)
 	mutex_lock(&core_control_mutex);
 	for_each_possible_cpu(cpu) {
 		if (!(msm_thermal_info.core_control_mask & BIT(cpus[cpu].cpu)))
-			continue;
-		if (cpus[cpu].sensor_id == -19)
 			continue;
 		if (therm_get_temp(cpus[cpu].sensor_id, cpus[cpu].id_type,
 					&temp)) {
@@ -3878,6 +3876,13 @@ init_freq_thread:
 	}
 }
 
+static void freq_mitigation_reinit(void)
+{
+	pr_warn("Trying to reinitialize Frequency mitigation task...\n");
+	pr_warn("Dumping mitg parameters: %d , %d , %d .\n", msm_thermal_info.freq_mitig_temp_degc, msm_thermal_info.freq_mitig_temp_hysteresis_degc, msm_thermal_info.freq_limit);
+ 	freq_mitigation_init();
+}
+
 int msm_thermal_get_freq_plan_size(uint32_t cluster, unsigned int *table_len)
 {
 	uint32_t i = 0;
@@ -4057,6 +4062,7 @@ int msm_thermal_set_cluster_freq(uint32_t cluster, uint32_t freq, bool is_max)
 			complete(&freq_mitigation_complete);
 	} else {
 		pr_err("Frequency mitigation task is not initialized\n");
+		freq_mitigation_reinit();
 		return -ESRCH;
 	}
 
@@ -4097,6 +4103,7 @@ int msm_thermal_set_frequency(uint32_t cpu, uint32_t freq, bool is_max)
 	} else {
 		pr_err("Frequency mitigation task is not initialized\n");
 		ret = -ESRCH;
+		freq_mitigation_reinit();
 		goto set_freq_exit;
 	}
 
@@ -4845,6 +4852,27 @@ static struct kernel_param_ops module_ops = {
 
 module_param_cb(enabled, &module_ops, &enabled, 0644);
 MODULE_PARM_DESC(enabled, "enforce thermal limit on cpu");
+
+/* Poll ms */
+module_param_named(poll_ms, msm_thermal_info.poll_ms, uint, 0664);
+
+/* Temp Threshold */
+module_param_named(temp_threshold, msm_thermal_info.limit_temp_degC,
+			int, 0664);
+module_param_named(core_limit_temp_degC, msm_thermal_info.core_limit_temp_degC,
+		   uint, 0644);
+module_param_named(hotplug_temp_degC, msm_thermal_info.hotplug_temp_degC,
+		   uint, 0644);
+module_param_named(freq_mitig_temp_degc,
+		   msm_thermal_info.freq_mitig_temp_degc, uint, 0644);
+
+/* Control Mask */
+module_param_named(freq_control_mask,
+		   msm_thermal_info.bootup_freq_control_mask, uint, 0644);
+module_param_named(core_control_mask, msm_thermal_info.core_control_mask,
+			uint, 0664);
+module_param_named(freq_mitig_control_mask,
+		   msm_thermal_info.freq_mitig_control_mask, uint, 0644);
 
 static ssize_t show_cc_enabled(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
@@ -5754,8 +5782,10 @@ static void thermal_cpu_freq_mit_disable(void)
 	}
 	if (freq_mitigation_task)
 		complete(&freq_mitigation_complete);
-	else
+	else {
 		pr_err("Freq mit task is not initialized\n");
+		freq_mitigation_reinit();
+	}
 }
 
 static void thermal_cpu_hotplug_mit_disable(void)
@@ -6217,7 +6247,7 @@ static int fetch_cpu_mitigaiton_info(struct msm_thermal_data *data,
 			goto fetch_mitig_exit;
 		}
 		strlcpy((char *) cpus[_cpu].sensor_type, sensor_name,
-			strlen(sensor_name) + 1);
+			strlen((char *) cpus[_cpu].sensor_type));
 		create_alias_name(_cpu, limits, pdev);
 	}
 
@@ -6631,9 +6661,7 @@ static int probe_cc(struct device_node *node, struct msm_thermal_data *data,
 	int ret = 0;
 
 	if (num_possible_cpus() > 1) {
-		key = "qcom,disable-core-control";
-		if (!of_property_read_bool(node, key))
-			core_control_enabled = 1;
+		core_control_enabled = 1;
 		hotplug_enabled = 1;
 	}
 
