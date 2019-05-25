@@ -1705,6 +1705,61 @@ out_unlock:
 	return retval ?: nbytes;
 }
 
+static char *cpuset_online_adjust(char *adj_cpulist, char *orig_cpulist)
+{
+	unsigned int nr_lp_cpus, nr_perf_cpus;
+	cpumask_t orig_mask, tmp;
+	int cpu;
+
+	if (num_online_cpus() == num_present_cpus())
+		return orig_cpulist;
+
+	if (cpulist_parse(orig_cpulist, &orig_mask))
+		return orig_cpulist;
+
+	cpumask_and(&tmp, &orig_mask, cpu_lp_mask);
+	nr_lp_cpus = cpumask_weight(&tmp);
+
+	cpumask_and(&tmp, &orig_mask, cpu_perf_mask);
+	nr_perf_cpus = cpumask_weight(&tmp);
+
+	*adj_cpulist = '\0';
+
+	if (nr_lp_cpus) {
+		for_each_cpu_and(cpu, cpu_lp_mask, cpu_online_mask) {
+			sprintf(adj_cpulist, "%s,%d", adj_cpulist, cpu);
+			if (!--nr_lp_cpus)
+				break;
+		}
+	}
+
+	if (nr_perf_cpus) {
+		for_each_cpu_and(cpu, cpu_perf_mask, cpu_online_mask) {
+			sprintf(adj_cpulist, "%s,%d", adj_cpulist, cpu);
+			if (!--nr_perf_cpus)
+				break;
+		}
+	}
+
+	return adj_cpulist + 1;
+}
+
+static ssize_t cpuset_write_cpus_resmask(struct kernfs_open_file *of,
+					 char *buf, size_t nbytes, loff_t off)
+{
+	char adj_cpulist[NR_CPUS * 2 + 1];
+	BUILD_BUG_ON(NR_CPUS >= 10);
+
+	/*
+	 * Adjust the requested cpuset to only use online CPUs. This is useful
+	 * for the assumption that CPUs which aren't online right now will never
+	 * be online.
+	 */
+	buf = cpuset_online_adjust(adj_cpulist, strstrip(buf));
+
+	return cpuset_write_resmask(of, buf, nbytes, off);
+}
+
 /*
  * These ascii lists should be read in a single call, by using a user
  * buffer large enough to hold the entire map.  If read in smaller
@@ -1810,7 +1865,7 @@ static struct cftype files[] = {
 	{
 		.name = "cpus",
 		.seq_show = cpuset_common_seq_show,
-		.write = cpuset_write_resmask,
+		.write = cpuset_write_cpus_resmask,
 		.max_write_len = (100U + 6 * NR_CPUS),
 		.private = FILE_CPULIST,
 	},
@@ -2262,6 +2317,13 @@ retry:
 	mutex_unlock(&cpuset_mutex);
 }
 
+static bool force_rebuild;
+
+void cpuset_force_rebuild(void)
+{
+	force_rebuild = true;
+}
+
 /**
  * cpuset_hotplug_workfn - handle CPU/memory hotunplug for a cpuset
  *
@@ -2336,8 +2398,10 @@ static void cpuset_hotplug_workfn(struct work_struct *work)
 	}
 
 	/* rebuild sched domains if cpus_allowed has changed */
-	if (cpus_updated)
+	if (cpus_updated || force_rebuild) {
+		force_rebuild = false;
 		rebuild_sched_domains();
+	}
 }
 
 void cpuset_update_active_cpus(bool cpu_online)
@@ -2354,6 +2418,11 @@ void cpuset_update_active_cpus(bool cpu_online)
 	 */
 	partition_sched_domains(1, NULL, NULL);
 	schedule_work(&cpuset_hotplug_work);
+}
+
+void cpuset_wait_for_hotplug(void)
+{
+	flush_work(&cpuset_hotplug_work);
 }
 
 /*
