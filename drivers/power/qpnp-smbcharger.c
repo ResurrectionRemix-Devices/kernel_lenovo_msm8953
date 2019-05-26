@@ -1174,6 +1174,19 @@ static int get_prop_batt_health(struct smbchg_chip *chip)
 		return POWER_SUPPLY_HEALTH_GOOD;
 }
 
+#ifndef CONFIG_QPNP_LEGACY_CYCLE_COUNT
+static int get_prop_batt_cycle_count(struct smbchg_chip *chip)
+{
+    int cycles, rc;
+    rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_CYCLE_COUNT, &cycles);
+    if (rc) {
+	pr_smb(PR_STATUS, "Couldn't get cycle count rc = %d\n", rc);
+	cycles = 0;
+    }
+    return cycles;
+}
+#endif
+
 static void get_property_from_typec(struct smbchg_chip *chip,
 				enum power_supply_property property,
 				union power_supply_propval *prop)
@@ -1637,7 +1650,7 @@ static int smbchg_set_high_usb_chg_current(struct smbchg_chip *chip,
 
 		rc = smbchg_sec_masked_write(chip,
 					chip->usb_chgpth_base + CHGPTH_CFG,
-					CFG_USB_2_3_SEL_BIT, CFG_USB_3);
+					CFG_USB_2_3_SEL_BIT, CFG_USB_2);
 		rc |= smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
 					USBIN_MODE_CHG_BIT | USB51_MODE_BIT,
 					USBIN_LIMITED_MODE | USB51_500MA);
@@ -1755,7 +1768,7 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 		if (current_ma == CURRENT_150_MA) {
 			rc = smbchg_sec_masked_write(chip,
 					chip->usb_chgpth_base + CHGPTH_CFG,
-					CFG_USB_2_3_SEL_BIT, CFG_USB_3);
+					CFG_USB_2_3_SEL_BIT, CFG_USB_2);
 			if (rc < 0) {
 				pr_err("Couldn't set CHGPTH_CFG rc = %d\n", rc);
 				goto out;
@@ -6167,6 +6180,9 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_RESISTANCE_ID,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
+#ifndef CONFIG_QPNP_LEGACY_CYCLE_COUNT
+	POWER_SUPPLY_PROP_CYCLE_COUNT,
+#endif
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
@@ -6406,6 +6422,11 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_MAX_PULSE_ALLOWED:
 		val->intval = chip->max_pulse_allowed;
 		break;
+#ifndef CONFIG_QPNP_LEGACY_CYCLE_COUNT
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+		val->intval = get_prop_batt_cycle_count(chip);
+		break;
+#endif
 	default:
 		return -EINVAL;
 	}

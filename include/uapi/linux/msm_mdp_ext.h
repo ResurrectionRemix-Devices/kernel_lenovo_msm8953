@@ -138,6 +138,12 @@ VALIDATE/COMMIT FLAG CONFIGURATION
  */
 #define MDP_COMMIT_SYNC_FENCE_WAIT		0x04
 
+/*
+ * Flag to indicate that rectangle number is being assigned
+ * by userspace in multi-rectangle mode
+ */
+#define MDP_COMMIT_RECT_NUM 0x2000
+
 #define MDP_COMMIT_VERSION_1_0		0x00010000
 
 #define OUT_LAYER_COLOR_SPACE
@@ -313,6 +319,12 @@ struct mdp_input_layer {
 	 * based on validate call failure scenario.
 	 */
 	int			error_code;
+
+	/*
+	 * For source pipes supporting multi-rectangle, this field identifies
+	 * the rectangle index of the source pipe.
+	 */
+	uint32_t		rect_num;
 
 	/* 32bits reserved value for future usage. */
 	uint32_t		reserved[6];

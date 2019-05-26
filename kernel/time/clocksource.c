@@ -220,7 +220,7 @@ static void clocksource_watchdog(unsigned long data)
 			continue;
 
 		/* Check the deviation from the watchdog clocksource. */
-		if ((abs(cs_nsec - wd_nsec) > WATCHDOG_THRESHOLD)) {
+		if ((abs64(cs_nsec - wd_nsec) > WATCHDOG_THRESHOLD)) {
 			clocksource_unstable(cs, cs_nsec - wd_nsec);
 			continue;
 		}
@@ -632,8 +632,8 @@ void clocksource_select_force(void)
  * clocksource_done_booting - Called near the end of core bootup
  *
  * Hack to avoid lots of clocksource churn at boot time.
- * We use fs_initcall because we want this to start before
- * device_initcall but after subsys_initcall.
+ * We use arch_initcall because we want this to start before
+ * device_initcall but after SMP init.
  */
 static int __init clocksource_done_booting(void)
 {
@@ -648,7 +648,7 @@ static int __init clocksource_done_booting(void)
 	mutex_unlock(&clocksource_mutex);
 	return 0;
 }
-fs_initcall(clocksource_done_booting);
+arch_initcall(clocksource_done_booting);
 
 /*
  * Enqueue the clocksource sorted by rating

@@ -23,7 +23,6 @@
 #include <linux/export.h>
 #include <linux/hid.h>
 #include <linux/module.h>
-#include <linux/freezer.h>
 #include <asm/unaligned.h>
 
 #include <linux/usb/composite.h>
@@ -751,7 +750,7 @@ retry:
 		 * and wait for next epfile open to happen
 		 */
 		if (!atomic_read(&epfile->error)) {
-			ret = wait_event_freezable(epfile->wait,
+			ret = wait_event_interruptible(epfile->wait,
 					(ep = epfile->ep));
 			if (ret < 0)
 				goto error;
@@ -1005,7 +1004,7 @@ error_lock:
 	mutex_unlock(&epfile->mutex);
 error:
 	kfree(data);
-	if (ret < 0)
+	if (ret < 0 && ret != -ERESTARTSYS)
 		pr_err_ratelimited("Error: returning %zd value\n", ret);
 	return ret;
 }
@@ -1167,7 +1166,7 @@ static long ffs_epfile_ioctl(struct file *file, unsigned code,
 			     unsigned long value)
 {
 	struct ffs_epfile *epfile = file->private_data;
-	int ret;
+	int ret = 0;
 
 	ENTER();
 
@@ -1804,11 +1803,14 @@ static int ffs_func_eps_enable(struct ffs_function *func)
 	spin_lock_irqsave(&func->ffs->eps_lock, flags);
 	do {
 		struct usb_endpoint_descriptor *ds;
+		struct usb_ss_ep_comp_descriptor *comp_desc = NULL;
+		int needs_comp_desc = false;
 		int desc_idx;
 
-		if (ffs->gadget->speed == USB_SPEED_SUPER)
+		if (ffs->gadget->speed == USB_SPEED_SUPER) {
 			desc_idx = 2;
-		else if (ffs->gadget->speed == USB_SPEED_HIGH)
+			needs_comp_desc = true;
+		} else if (ffs->gadget->speed == USB_SPEED_HIGH)
 			desc_idx = 1;
 		else
 			desc_idx = 0;
@@ -1825,6 +1827,13 @@ static int ffs_func_eps_enable(struct ffs_function *func)
 
 		ep->ep->driver_data = ep;
 		ep->ep->desc = ds;
+
+		if (needs_comp_desc) {
+			comp_desc = (struct usb_ss_ep_comp_descriptor *)(ds +
+					USB_DT_ENDPOINT_SIZE);
+			ep->ep->maxburst = comp_desc->bMaxBurst + 1;
+			ep->ep->comp_desc = comp_desc;
+		}
 
 		ret = config_ep_by_speed(func->gadget, &func->function, ep->ep);
 		if (ret) {

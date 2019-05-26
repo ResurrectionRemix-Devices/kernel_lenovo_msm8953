@@ -39,6 +39,15 @@
 					fsmgr_flags = "wait,verify";
 					status = "ok";
 				};
+				system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/soc/7824900.sdhci/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait,verify";
+					status = "ok";
+				};
+
 			};
 		};
 	};
@@ -505,17 +514,19 @@
 	qcom,msm-thermal {
 		compatible = "qcom,msm-thermal";
 		qcom,sensor-id = <9>;
-		qcom,poll-ms = <1500>;
+		qcom,poll-ms = <1000>;
 		qcom,limit-temp = <90>;
-		qcom,temp-hysteresis = <50>;
+		qcom,temp-hysteresis = <10>;
 		qcom,freq-step = <2>;
-		qcom,core-limit-temp = <85>;
-		qcom,core-temp-hysteresis = <50>;
-		qcom,hotplug-temp = <95>;
-		qcom,hotplug-temp-hysteresis = <15>;
-		qcom,freq-mitigation-temp = <105>;
-		qcom,freq-mitigation-temp-hysteresis = <15>;
+		qcom,core-limit-temp = <95>;
+		qcom,core-temp-hysteresis = <10>;
+		qcom,hotplug-temp = <105>;
+		qcom,hotplug-temp-hysteresis = <40>;
+		qcom,freq-mitigation-temp = <95>;
+		qcom,freq-mitigation-temp-hysteresis = <10>;
 		qcom,freq-mitigation-value = <1036800>;
+		qcom,cpu-sensors = "tsens_tz_sensor9", "tsens_tz_sensor10", "tsens_tz_sensor11", "tsens_tz_sensor12",
+                           "tsens_tz_sensor4", "tsens_tz_sensor5", "tsens_tz_sensor6", "tsens_tz_sensor7";
 		qcom,therm-reset-temp = <115>;
 		qcom,online-hotplug-core;
 		qcom,synchronous-cluster-id = <0 1>;
@@ -541,7 +552,7 @@
 
 		qcom,vdd-gfx-rstr {
 			qcom,vdd-rstr-reg = "vdd-gfx";
-			qcom,levels = <5 7 7>; /* Nominal, Turbo, Turbo */
+			qcom,levels = <5 7 8>; /* Nominal, Turbo, Turbo+ */
 			qcom,min-level = <1>; /* No Request */
 		};
 
@@ -556,15 +567,17 @@
 		compatible = "qcom,bcl";
 		qcom,bcl-enable;
 		qcom,bcl-framework-interface;
-		qcom,bcl-freq-control-list =
-		<&CPU4 &CPU5 &CPU6 &CPU7>;
+		qcom,bcl-freq-control-list = <&CPU0 &CPU1 &CPU2 &CPU3
+						&CPU4 &CPU5 &CPU6 &CPU7>;
+		qcom,bcl-hotplug-list = <&CPU6 &CPU7>;
+		qcom,bcl-soc-hotplug-list = <&CPU4 &CPU5 &CPU6 &CPU7>;
 		qcom,ibat-monitor {
-			qcom,low-threshold-uamp = <2100000>;
-			qcom,high-threshold-uamp = <1650000>;
-			qcom,mitigation-freq-khz = <1728000>;
-			qcom,vph-high-threshold-uv = <1100000>;
-			qcom,vph-low-threshold-uv = <5200000>;
-			qcom,soc-low-threshold = <3>;
+			qcom,low-threshold-uamp = <3400000>;
+			qcom,high-threshold-uamp = <4200000>;
+			qcom,mitigation-freq-khz = <1689600>;
+			qcom,vph-high-threshold-uv = <3500000>;
+			qcom,vph-low-threshold-uv = <3200000>;
+			qcom,soc-low-threshold = <5>;
 			qcom,thermal-handle = <&msm_thermal_freq>;
 		};
 	};
@@ -890,15 +903,19 @@
 		reg = <0x1800000 0x80000>;
 		reg-names = "cc_base";
 		vdd_gfx-supply = <&gfx_vreg_corner>;
+		clocks = <&clock_gcc clk_xo_clk_src>;
+		clock-names = "xo";
+		qcom,gcc_oxili_gfx3d_clk-opp-handle = <&msm_gpu>;
 		qcom,gfxfreq-corner =
 			<         0   0 >,
-			< 133330000   1 >,  /* Min SVS   */
-			< 216000000   2 >,  /* Low SVS   */
-			< 320000000   3 >,  /* SVS       */
-			< 400000000   4 >,  /* SVS Plus  */
-			< 510000000   5 >,  /* NOM       */
-			< 560000000   6 >,  /* Nom Plus  */
-			< 650000000   7 >;  /* Turbo     */
+			< 133330000   1 >,  /* Min SVS    */
+			< 216000000   2 >,  /* Low SVS    */
+			< 320000000   3 >,  /* SVS        */
+			< 400000000   4 >,  /* SVS Plus   */
+			< 510000000   5 >,  /* NOM        */
+			< 560000000   6 >,  /* Nom Plus   */
+			< 650000000   7 >,  /* Turbo      */
+			< 700000000   8 >;  /* Turbo Plus */
 		#clock-cells = <1>;
 	};
 
@@ -927,7 +944,9 @@
 			< 1689600000 4>,
 			< 1804800000 5>,
 			< 1958400000 6>,
-			< 2016000000 7>;
+			< 2016000000 7>,
+			< 2150400000 8>,
+			< 2208000000 9>;
 		qcom,speed0-bin-v0-cci =
 			<          0 0>,
 			<  261120000 1>,
@@ -936,7 +955,9 @@
 			<  675840000 4>,
 			<  721920000 5>,
 			<  783360000 6>,
-			<  806400000 7>;
+			<  806400000 7>,
+			<  860160000 8>,
+			<  883200000 9>;
 		qcom,speed2-bin-v0-cl =
 			<          0 0>,
 			<  652800000 1>,
@@ -945,7 +966,9 @@
 			< 1689600000 4>,
 			< 1804800000 5>,
 			< 1958400000 6>,
-			< 2016000000 7>;
+			< 2016000000 7>,
+			< 2150400000 8>,
+			< 2208000000 9>;
 		qcom,speed2-bin-v0-cci =
 			<          0 0>,
 			<  261120000 1>,
@@ -954,7 +977,9 @@
 			<  675840000 4>,
 			<  721920000 5>,
 			<  783360000 6>,
-			<  806400000 7>;
+			<  806400000 7>,
+			<  860160000 8>,
+			<  883200000 9>;
 		qcom,speed7-bin-v0-cl =
 			<          0 0>,
 			<  652800000 1>,
@@ -1023,7 +1048,7 @@
 
 	cpubw: qcom,cpubw {
 		compatible = "qcom,devbw";
-		governor = "cpufreq";
+		governor = "bw_hwmon";
 		qcom,src-dst-ports = <1 512>;
 		qcom,active-only;
 		qcom,bw-tbl =
@@ -1042,7 +1067,7 @@
 
 	mincpubw: qcom,mincpubw {
 		compatible = "qcom,devbw";
-		governor = "cpufreq";
+		governor = "performance";
 		qcom,src-dst-ports = <1 512>;
 		qcom,active-only;
 		qcom,bw-tbl =
