@@ -315,6 +315,7 @@ struct msm_fb_data_type {
 	u32 bl_level_scaled;
 	struct mutex bl_lock;
 	struct mutex mdss_sysfs_lock;
+	struct mutex param_lock;
 	bool ipc_resume;
 
 	struct platform_device *pdev;
@@ -333,10 +334,6 @@ struct msm_fb_data_type {
 	struct task_struct *disp_thread;
 	atomic_t commits_pending;
 	atomic_t kickoff_pending;
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
-	atomic_t resume_pending;
-	wait_queue_head_t resume_wait_q;
-#endif
 	wait_queue_head_t commit_wait_q;
 	wait_queue_head_t idle_wait_q;
 	wait_queue_head_t kickoff_wait_q;
@@ -388,7 +385,7 @@ static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)
 		if (mfd->no_update.timer.function)
 			del_timer(&(mfd->no_update.timer));
 
-		mfd->no_update.timer.expires = jiffies + msecs_to_jiffies(2000);
+		mfd->no_update.timer.expires = jiffies + (2 * HZ);
 		add_timer(&mfd->no_update.timer);
 		mutex_unlock(&mfd->no_update.lock);
 	}
@@ -475,5 +472,4 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd);
 void mdss_panelinfo_to_fb_var(struct mdss_panel_info *pinfo,
 						struct fb_var_screeninfo *var);
 void mdss_fb_calc_fps(struct msm_fb_data_type *mfd);
-void mdss_fb_idle_pc(struct msm_fb_data_type *mfd);
 #endif /* MDSS_FB_H */

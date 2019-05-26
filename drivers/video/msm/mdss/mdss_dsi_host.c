@@ -58,7 +58,7 @@ struct mdss_hw mdss_dsi1_hw = {
 
 #define DSI_EVENT_Q_MAX	4
 
-#define DSI_BTA_EVENT_TIMEOUT (100)
+#define DSI_BTA_EVENT_TIMEOUT (HZ / 10)
 
 /* Mutex common for both the controllers */
 static struct mutex dsi_mtx;
@@ -1215,29 +1215,6 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	return ret;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-extern u32 te_count;
-static u32 te_count_old = 1;
-
-int mdss_dsi_TE_NT35596_check (struct mdss_dsi_ctrl_pdata *ctrl_pdata)
-{
-	int ret = 1;
-
-	if (te_count_old != te_count) {
-
-		te_count_old = te_count;
-	} else {
-		ret = 0;
-		pr_err("liujia te_count doesnt add as time");
-	}
-	if (te_count >= 10000)
-		te_count = 0;
-
-	return ret;
-
-}
-#endif
-
 void mdss_dsi_dsc_config(struct mdss_dsi_ctrl_pdata *ctrl, struct dsc_desc *dsc)
 {
 	u32 data, offset;
@@ -1492,7 +1469,7 @@ int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	wmb();
 
 	ret = wait_for_completion_killable_timeout(&ctrl_pdata->bta_comp,
-						msecs_to_jiffies(DSI_BTA_EVENT_TIMEOUT));
+						DSI_BTA_EVENT_TIMEOUT);
 	if (ret <= 0) {
 		mdss_dsi_disable_irq(ctrl_pdata, DSI_BTA_TERM);
 		pr_err("%s: DSI BTA error: %i\n", __func__, ret);
@@ -2607,13 +2584,14 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	int rc = 0;
 	bool hs_req = false;
 	bool cmd_mutex_acquired = false;
+	u32 forced_mode;
 
+	pinfo = &ctrl->panel_data.panel_info;
 	if (from_mdp) {	/* from mdp kickoff */
 		if (!ctrl->burst_mode_enabled) {
 			mutex_lock(&ctrl->cmd_mutex);
 			cmd_mutex_acquired = true;
 		}
-		pinfo = &ctrl->panel_data.panel_info;
 		if (pinfo->partial_update_enabled)
 			roi = &pinfo->roi;
 	}
@@ -2627,8 +2605,16 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	MDSS_XLOG(ctrl->ndx, from_mdp, ctrl->mdp_busy, current->pid,
 							XLOG_FUNC_ENTRY);
 
-	if (req && (req->flags & CMD_REQ_HS_MODE))
-		hs_req = true;
+	if (req) {
+		forced_mode = mdss_dsi_panel_forced_tx_mode_get(pinfo);
+		if (forced_mode) {
+			req->flags &= ~(CMD_REQ_HS_MODE | CMD_REQ_LP_MODE);
+			req->flags |= forced_mode;
+		}
+
+		if (req->flags & CMD_REQ_HS_MODE)
+			hs_req = true;
+	}
 
 	if ((!ctrl->burst_mode_enabled) || from_mdp) {
 		/* make sure dsi_cmd_mdp is idle */
