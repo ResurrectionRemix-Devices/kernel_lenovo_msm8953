@@ -39,9 +39,10 @@
 
 #include "clock.h"
 
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
 #include <linux/cpufreq.h>
 #include <linux/regulator/driver.h>
-
+#endif
 
 #define APCS_PLL_MODE		0x0
 #define APCS_PLL_L_VAL		0x8
@@ -486,7 +487,7 @@ static struct clk *logical_cpu_to_clk(int cpu)
 	return NULL;
 }
 
-
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
  #define CPU_VDD_MIN	 600
 #define CPU_VDD_MAX	1450
  extern bool is_used_by_scaling(unsigned int freq);
@@ -541,7 +542,7 @@ static struct clk *logical_cpu_to_clk(int cpu)
 	pr_warn("faux123: user voltage table modified!\n");
 	return count;
 }
-
+#endif
 
 static int add_opp(struct clk *c, struct device *dev, unsigned long max_rate)
 {
