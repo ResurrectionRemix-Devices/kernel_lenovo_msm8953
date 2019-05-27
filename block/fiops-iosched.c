@@ -528,7 +528,9 @@ fiops_find_rq_fmerge(struct fiops_data *fiopsd, struct bio *bio)
 	cic = fiops_cic_lookup(fiopsd, tsk->io_context);
 
 	if (cic) {
-		return elv_rb_find(&cic->sort_list, bio_end_sector(bio));
+		sector_t sector = bio->bi_iter.bi_sector + bio_sectors(bio);
+
+		return elv_rb_find(&cic->sort_list, sector);
 	}
 
 	return NULL;
@@ -760,4 +762,3 @@ module_exit(fiops_exit);
 MODULE_AUTHOR("Jens Axboe, Shaohua Li <shli@kernel.org>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("IOPS based IO scheduler");
-
