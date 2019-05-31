@@ -3427,6 +3427,13 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 		goto iommu_disable;
 	}
 
+	if (l_pipe_allocated &&
+			(l_pipe->multirect.num == MDSS_MDP_PIPE_RECT1)) {
+		pr_err("Invalid: L_Pipe-%d is assigned for RECT-%d\n",
+				l_pipe->num, l_pipe->multirect.num);
+		goto pipe_release;
+	}
+
 	if (mdss_mdp_pipe_map(l_pipe)) {
 		pr_err("unable to map base pipe\n");
 		goto pipe_release;
@@ -3472,6 +3479,16 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 		if (ret) {
 			pr_err("unable to allocate right base pipe\n");
 			goto pipe_release;
+		}
+
+		if (l_pipe_allocated && r_pipe_allocated &&
+				(l_pipe->num != r_pipe->num) &&
+				(r_pipe->multirect.num ==
+				 MDSS_MDP_PIPE_RECT1)) {
+			pr_err("Invalid: L_Pipe-%d,RECT-%d R_Pipe-%d,RECT-%d\n",
+					l_pipe->num, l_pipe->multirect.num,
+					r_pipe->num, l_pipe->multirect.num);
+			goto iommu_disable;
 		}
 
 		if (mdss_mdp_pipe_map(r_pipe)) {
@@ -5925,16 +5942,9 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 	if (rc)
 		goto panel_on;
 
-	/* Skip the overlay start and kickoff for all displays
-	if handoff is pending. Previously we skipped it for DTV
-	panel and pluggable panels (bridge chip hdmi case). But
-	it does not cover the case where there is a non pluggable
-	tertiary display. Using the flag handoff_pending to skip
-	overlay start and kickoff should cover all cases
-	TODO: In the long run, the overlay start and kickoff
-	should not be skipped, instead, the handoff can be done */
 	if (!mfd->panel_info->cont_splash_enabled &&
-		!mdata->handoff_pending) {
+			!mdata->handoff_pending &&
+				!mfd->panel_info->is_dba_panel) {
 		rc = mdss_mdp_overlay_start(mfd);
 		if (rc)
 			goto end;

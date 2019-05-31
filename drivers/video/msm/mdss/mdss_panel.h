@@ -46,45 +46,6 @@ enum fps_resolution {
 #define SIM_SW_TE_PANEL	"sim-swte"
 #define SIM_HW_TE_PANEL	"sim-hwte"
 
-enum hbm_state {
-	HBM_OFF_STATE = 0,
-	HBM_ON_STATE,
-	HBM_STATE_NUM
-};
-
-enum acl_state {
-	ACL_OFF_STATE = 0,
-	ACL_ON_STATE,
-	ACL_STATE_NUM
-};
-
-enum seed_state {
-	SEED_OFF_STATE = 0,
-	SEED_ON_STATE,
-	SEED_STATE_NUM
-};
-
-enum panel_param_id {
-	PARAM_HBM_ID = 0,
-	PARAM_ACL_ID,
-	PARAM_SEED_ID,
-	PARAM_ID_NUM
-};
-
-struct panel_param_val_map {
-	char *name;
-	char *prop;
-};
-
-struct panel_param {
-	const char *param_name;
-	const struct panel_param_val_map *val_map;
-	const u16 val_max;
-	const u16 default_value;
-	u16 value;
-	bool is_supported;
-};
-
 /* panel type list */
 #define NO_PANEL		0xffff	/* No Panel */
 #define MDDI_PANEL		1	/* MDDI */
@@ -319,6 +280,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_PANEL_TIMING_SWITCH,
 	MDSS_EVENT_UPDATE_PARAMS,
 	MDSS_EVENT_MAX,
+	MDSS_EVENT_UPDATE_LIVEDISPLAY,
 };
 
 struct lcd_panel_info {
@@ -643,6 +605,8 @@ struct mdss_mdp_pp_tear_check {
 	u32 refx100;
 };
 
+struct mdss_livedisplay_ctx;
+
 struct mdss_panel_roi_alignment {
 	u32 xstart_pix_align;
 	u32 width_pix_align;
@@ -798,6 +762,8 @@ struct mdss_panel_info {
 	 */
 	u32 adjust_timer_delay_ms;
 
+	struct mdss_livedisplay_ctx *livedisplay;
+
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
 
@@ -806,11 +772,6 @@ struct mdss_panel_info {
 
 	/* HDR properties of display panel*/
 	struct mdss_panel_hdr_properties hdr_properties;
-
-	struct panel_param *param[PARAM_ID_NUM];
-	bool hbm_restore;
-	u32 forced_tx_mode_ftr_enabled;
-	u32 forced_tx_mode_state;
 };
 
 struct mdss_panel_timing {
@@ -851,7 +812,6 @@ struct mdss_panel_data {
 	struct mdss_panel_info panel_info;
 	void (*set_backlight) (struct mdss_panel_data *pdata, u32 bl_level);
 	int (*apply_display_setting)(struct mdss_panel_data *pdata, u32 mode);
-	int (*set_param)(struct mdss_panel_data *pdata, u16 id, u16 value);
 	unsigned char *mmss_cc_base;
 
 	/**
@@ -1265,15 +1225,4 @@ static inline struct mdss_panel_timing *mdss_panel_get_timing_by_name(
 		struct mdss_panel_data *pdata,
 		const char *name) { return NULL; };
 #endif
-
-static inline bool mdss_panel_param_is_supported(struct mdss_panel_info *p,
-	u16 id)
-{
-	if (id < PARAM_ID_NUM && p && p->param[id] &&
-		p->param[id]->is_supported)
-		return true;
-
-	return false;
-};
-
 #endif /* MDSS_PANEL_H */
