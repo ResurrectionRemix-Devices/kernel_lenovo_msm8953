@@ -335,6 +335,7 @@ struct msm_fb_data_type {
 	atomic_t kickoff_pending;
 
 	atomic_t resume_pending;
+	wait_queue_head_t resume_wait_q;
 
 	wait_queue_head_t commit_wait_q;
 	wait_queue_head_t idle_wait_q;
