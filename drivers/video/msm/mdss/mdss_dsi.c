@@ -278,11 +278,11 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev,
 	return rc;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 extern int ft8716_suspend;
 extern int  ft8716_gesture_func_on;
 int acc_vreg = 0;
-#endif
+
 int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -306,27 +306,27 @@ int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 	if (mdss_dsi_pinctrl_set_state(ctrl_pdata, false))
 		pr_debug("reset disable: pinctrl not enabled\n");
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
+
 	if (2 == panel_suspend_reset_flag)
 		msleep(1); //dealy 2ms
 
 	if (4 == panel_suspend_reset_flag)
 		msleep(4); //delay 4ms
-#endif
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
+
 	if ((panel_suspend_power_flag != 3) && acc_vreg) {
-#endif
+
 		ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
 		ctrl_pdata->panel_power_data.num_vreg, 0);
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 		acc_vreg--;
-#endif
+
 		if (ret)
 			pr_err("%s: failed to disable vregs for %s\n",
 			__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 	} else {
 		if (!ft8716_gesture_func_on && ft8716_suspend && acc_vreg) {
 			ret = msm_dss_enable_vreg(
@@ -339,7 +339,7 @@ int mdss_dsi_panel_power_off(struct mdss_panel_data *pdata)
 		}
 	}
 
-#endif
+
 end:
 	return ret;
 }
@@ -356,23 +356,23 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 	if (!acc_vreg) {
-#endif
+
 		ret = msm_dss_enable_vreg(
 		ctrl_pdata->panel_power_data.vreg_config,
 		ctrl_pdata->panel_power_data.num_vreg, 1);
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 		acc_vreg++;
-#endif
+
 		if (ret) {
 			pr_err("%s: failed to enable vregs for %s\n",
 				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 			return ret;
 		}
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 	}
-#endif
+
 
 	/*
 	 * If continuous splash screen feature is enabled, then we need to
@@ -3292,9 +3292,9 @@ end:
 	return rc;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 struct mdss_panel_data *panel_data;
-#endif
+
 
 static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
@@ -3398,9 +3398,9 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		ctrl_pdata->bklt_ctrl = UNKNOWN_CTRL;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_TISSOT
+
 	panel_data = &ctrl_pdata->panel_data;
-#endif
+
 
 	rc = dsi_panel_device_register(pdev, dsi_pan_node, ctrl_pdata);
 	if (rc) {
@@ -4217,7 +4217,7 @@ static int mdss_dsi_parse_ctrl_params(struct platform_device *ctrl_pdev,
 
 }
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
+
 u32 te_count;
 static irqreturn_t te_interrupt(int irq, void *data)
 {
@@ -4259,7 +4259,7 @@ int init_te_irq(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 		return 0;
 }
-#endif
+
 
 static int mdss_dsi_parse_gpio_params(struct platform_device *ctrl_pdev,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -4426,12 +4426,12 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 		ctrl_pdata->check_status = mdss_dsi_reg_status_check;
 	else if (ctrl_pdata->status_mode == ESD_BTA)
 		ctrl_pdata->check_status = mdss_dsi_bta_status_check;
-#ifdef CONFIG_MACH_XIAOMI_MIDO
+
 	else if (ctrl_pdata->status_mode == ESD_TE_NT35596) {
 		ctrl_pdata->check_status = mdss_dsi_TE_NT35596_check;
 		init_te_irq(ctrl_pdata);
 	}
-#endif
+
 
 	if (ctrl_pdata->status_mode == ESD_MAX) {
 		pr_err("%s: Using default BTA for ESD check\n", __func__);

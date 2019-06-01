@@ -1215,7 +1215,7 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	return ret;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
+
 extern u32 te_count;
 static u32 te_count_old = 1;
 
@@ -1236,7 +1236,7 @@ int mdss_dsi_TE_NT35596_check (struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	return ret;
 
 }
-#endif
+
 
 void mdss_dsi_dsc_config(struct mdss_dsi_ctrl_pdata *ctrl, struct dsc_desc *dsc)
 {
