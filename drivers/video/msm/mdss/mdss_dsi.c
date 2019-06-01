@@ -46,10 +46,10 @@ static struct mdss_dsi_data *mdss_dsi_res;
 
 static struct pm_qos_request mdss_dsi_pm_qos_request;
 
-#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT)
+
 int panel_suspend_reset_flag = 0;
 int panel_suspend_power_flag = 0;
-#endif
+
 
 static void mdss_dsi_pm_qos_add_request(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -3004,7 +3004,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		if (!strcmp(panel_name, NONE_PANEL))
 			goto exit;
 
-#if (defined CONFIG_MACH_XIAOMI_MIDO) || (defined CONFIG_MACH_XIAOMI_TISSOT)
+
 		if (!strcmp(panel_name, "qcom,mdss_dsi_td4310_fhd_video")) {
 			panel_suspend_reset_flag = 1;
 			panel_suspend_power_flag = 1;
@@ -3016,7 +3016,7 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 			panel_suspend_power_flag = 3;
 		} else if (!strcmp(panel_name, "qcom,mdss_dsi_ili9885_boe_fhd_video"))
 			panel_suspend_reset_flag = 4;
-#endif
+
 
 		mdss_node = of_parse_phandle(pdev->dev.of_node,
 			"qcom,mdss-mdp", 0);
