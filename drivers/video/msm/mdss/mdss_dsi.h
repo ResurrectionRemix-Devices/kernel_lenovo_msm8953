@@ -107,9 +107,6 @@ enum dsi_panel_status_mode {
 	ESD_BTA,
 	ESD_REG,
 	ESD_REG_NT35596,
-
-	ESD_TE_NT35596,
-
 	ESD_TE,
 	ESD_MAX,
 };
@@ -229,10 +226,6 @@ enum dsi_pm_type {
 extern struct device dsi_dev;
 extern u32 dsi_irq;
 extern struct mdss_dsi_ctrl_pdata *ctrl_list[];
-
-
-extern int ft8716_gesture_func_on;
-
 
 enum {
 	DSI_CTRL_0,
@@ -494,6 +487,7 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds cmd2video;
 
 	char pps_buf[DSC_PPS_LEN];	/* dsc pps */
+	struct dsi_panel_cmds *param_cmds[PARAM_ID_NUM];
 
 	struct dcs_cmd_list cmdlist;
 	struct completion dma_comp;
@@ -564,13 +558,6 @@ struct mdss_dsi_ctrl_pdata {
 	bool update_phy_timing; /* flag to recalculate PHY timings */
 
 	bool phy_power_off;
-
-	struct notifier_block wake_notif;
-	struct task_struct *wake_thread;
-	struct completion wake_comp;
-	wait_queue_head_t wake_waitq;
-	atomic_t disp_is_on;
-	atomic_t needs_wake;
 };
 
 struct dsi_status_data {
@@ -658,9 +645,6 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
-
-int mdss_dsi_TE_NT35596_check(struct mdss_dsi_ctrl_pdata *ctrl);
-
 bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 void mdss_dsi_ctrl_setup(struct mdss_dsi_ctrl_pdata *ctrl);
 bool mdss_dsi_dln0_phy_err(struct mdss_dsi_ctrl_pdata *ctrl, bool print_en);
@@ -692,6 +676,10 @@ void mdss_dsi_set_reg(struct mdss_dsi_ctrl_pdata *ctrl, int off,
 	u32 mask, u32 val);
 int mdss_dsi_phy_pll_reset_status(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_panel_power_ctrl(struct mdss_panel_data *pdata, int power_state);
+
+u32 mdss_dsi_panel_forced_tx_mode_get(struct mdss_panel_info *pinfo);
+void mdss_dsi_panel_forced_tx_mode_set(struct mdss_panel_info *pinfo,
+				bool enable);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {

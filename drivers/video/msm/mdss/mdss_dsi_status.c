@@ -36,7 +36,6 @@
 #define DSI_STATUS_CHECK_INIT -1
 #define DSI_STATUS_CHECK_DISABLE 1
 
-
 static uint32_t interval = STATUS_CHECK_INTERVAL_MS;
 static int32_t dsi_status_disable = DSI_STATUS_CHECK_INIT;
 struct dsi_status_data *pstatus_data;
