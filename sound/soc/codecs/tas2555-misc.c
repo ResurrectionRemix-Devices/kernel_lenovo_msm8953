@@ -576,7 +576,7 @@ static long tas2555_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 
 	mutex_lock(&pTAS2555->file_lock);
 
-	switch (cmd) {
+	switch ((unsigned long)cmd) {
 
 
 		case  ENABLE_MI2S_CLK:

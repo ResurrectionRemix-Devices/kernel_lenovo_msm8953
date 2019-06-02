@@ -38,7 +38,7 @@ extern int msm8x16_quat_mi2s_clk_ctl(bool enable);
 #define	TIAUDIO_CMD_SPEAKER				11
 #define	TIAUDIO_CMD_FW_RELOAD			12
 
-#define	TAS2555_MAGIC_NUMBER	0x32353535	/* '2555' */
+#define	TAS2555_MAGIC_NUMBER	0x32353535UL	/* '2555' */
 
 #define	SMARTPA_SPK_DAC_VOLUME				_IOWR(TAS2555_MAGIC_NUMBER, 1, unsigned long)
 #define	SMARTPA_SPK_POWER_ON				_IOWR(TAS2555_MAGIC_NUMBER, 2, unsigned long)
