@@ -66,7 +66,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 		return rc;
 	}
 
-	switch (cmd) {
+	switch ((unsigned long)cmd) {
 	case MSM_CCI_INTF_READ:
 		/* read */
 		cci_ctrl.cmd = MSM_CCI_I2C_READ;
