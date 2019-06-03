@@ -216,6 +216,8 @@ static unsigned char firmware_data_vendor2[] = {
 #define FT_MAGIC_BLOADER_GZF_30	0x7ff4
 #define FT_MAGIC_BLOADER_GZF	0x7bf4
 
+#define FTS_RESUME_WAIT_TIME    20
+
 enum {
 	FT_BLOADER_VERSION_LZ4 = 0,
 	FT_BLOADER_VERSION_Z7 = 1,
@@ -307,6 +309,8 @@ struct ft5435_ts_data {
 	struct pinctrl_state *gpio_state_active;
 	struct pinctrl_state *gpio_state_suspend;
 
+	struct delayed_work resume_work;
+
 #if defined(FOCALTECH_TP_GLOVE)
 	u8 glove_id;
 #endif
@@ -374,6 +378,7 @@ static struct workqueue_struct *ft5435_wq_cover;
 static struct workqueue_struct *ft5435_wq_vr;
 #endif
 static struct workqueue_struct *ft5435_wq;
+static struct workqueue_struct *ft5435_resume_workqueue;
 static struct ft5435_ts_data *g_ft5435_ts_data;
 
 static int init_ok;
@@ -1436,6 +1441,27 @@ static int  ft_tp_suspend(struct ft5435_ts_data *data)
 }
 #endif
 
+static void ft5435_resume_func(struct work_struct *work)
+{
+	struct ft5435_ts_data *data = g_ft5435_ts_data;
+	printk("Enter %s", __func__);
+
+	msleep(data->pdata->soft_rst_dly);
+
+	ft5x0x_write_reg(data->client, 0x8c, 0x01);
+
+#if defined(FOCALTECH_TP_GESTURE)
+	if (gesture_func_on)
+		disable_irq_wake(data->client->irq);
+	else
+		enable_irq(data->client->irq);
+#else
+	enable_irq(data->client->irq);
+#endif
+
+	data->suspended = false;
+}
+
 #ifdef CONFIG_PM
 static int ft5435_ts_suspend(struct device *dev)
 {
@@ -1518,19 +1544,15 @@ static int ft5435_ts_resume(struct device *dev)
 	if (gesture_func_on)
                 disable_irq_wake(data->client->irq);
 
-/*hw rst*/
+	/*hw rst*/
 	if (gpio_is_valid(data->pdata->reset_gpio)) {
 		gpio_set_value_cansleep(data->pdata->reset_gpio, 0);
 		msleep(2);
 		gpio_set_value_cansleep(data->pdata->reset_gpio, 1);
 	}
 
-	msleep(data->pdata->soft_rst_dly);
-
-
-	ft5x0x_write_reg(data->client, 0x8c, 0x01);
-	enable_irq(data->client->irq);
-	data->suspended = false;
+	cancel_delayed_work(&data->resume_work);
+	queue_delayed_work(ft5435_resume_workqueue, &data->resume_work, msecs_to_jiffies(FTS_RESUME_WAIT_TIME));
 
 #if defined(USB_CHARGE_DETECT)
 	queue_work(ft5435_wq, &data->work);
@@ -4011,6 +4033,9 @@ INIT_WORK(&data->work_vr, ft5435_change_vr_switch);
 		dev_err(&client->dev, "request irq failed\n");
 		goto free_reset_gpio;
 	}
+
+	INIT_DELAYED_WORK(&data->resume_work, ft5435_resume_func);
+	ft5435_resume_workqueue = create_workqueue("fts_resume_wq");
 
 	err = device_create_file(&client->dev, &dev_attr_fw_name);
 	if (err) {
