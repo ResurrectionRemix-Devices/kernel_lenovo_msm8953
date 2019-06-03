@@ -3489,12 +3489,11 @@ static struct i2c_driver wcd9335_i2c_driver = {
 	.driver	                = {
 		.owner	        =       THIS_MODULE,
 		.name           =       "tasha-i2c-core",
+		.pm		=	&wcd9xxx_i2c_pm_ops,
 	},
 	.id_table               =       tasha_id_table,
 	.probe                  =       wcd9xxx_i2c_probe,
 	.remove                 =       wcd9xxx_i2c_remove,
-	.resume = wcd9xxx_i2c_resume,
-	.suspend = wcd9xxx_i2c_suspend,
 };
 
 static int __init wcd9xxx_init(void)
